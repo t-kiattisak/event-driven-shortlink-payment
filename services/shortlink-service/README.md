@@ -4,8 +4,11 @@
 `shortlink-service` acts as the **Core Infrastructure Service** responsible for resolving shortlink codes (`/s/:code`), performing fast lookups via **Redis Cache**, tracking user click metrics, and redirecting or dispatching requests to the appropriate Business Domain Service (`payment-service`).
 
 ### Key Responsibilities:
-- **Code Resolution**: Decode short link codes into target resources (`paymentNo` / target URL).
-- **Fast Caching**: Cache code-to-payment mappings in **Redis** with TTL.
+- **Code Generation & Single Source of Truth**: Generate unique short codes (Base62 / Hashing) via `POST /api/v1/shortlinks`.
+- **Expiration Validation & 7-Day TTL**: Enforce a **default 7-day TTL (604,800 seconds)** expiration policy. Validate whether a link has expired during resolution (`GET /s/:code`) and respond with HTTP 410 Gone if expired.
+- **Code Resolution**: Decode short link codes into target resources (`paymentNo` / target URL) via `GET /s/:code`.
+- **Fast Caching**: Store and cache code-to-payment mappings in **Redis** with 7-day TTL.
+- **Event Creation**: Produce `shortlink.created` event when a new link is registered.
 - **Click Tracking (Fire-and-Forget)**: Asynchronously produce `shortlink.clicked` events to Apache Kafka whenever a code is resolved without blocking client HTTP responses.
 - **Redirection / Proxy**: Seamlessly redirect users to the dynamic Checkout UI provided by `payment-service`.
 

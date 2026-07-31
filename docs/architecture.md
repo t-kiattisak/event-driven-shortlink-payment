@@ -43,8 +43,44 @@ sequenceDiagram
     end
 ```
 
-### 2.3 Fire-and-Forget Click Analytics
-`shortlink-service` emits `shortlink.clicked` events asynchronously to Kafka without blocking client HTTP responses, ensuring link resolution latency remains minimal.
+### 2.4 Shortcode Generation, Expiration & Domain Ownership
+`shortlink-service` เป็น **Single Source of Truth** สำหรับการสร้าง, ตรวจสอบสถานะวันหมดอายุ, และจัดการ Short Code ทั้งหมดในระบบ:
+1. **Shortcode Creation**: `shortlink-service` ให้บริการ `POST /api/v1/shortlinks` สำหรับรับ Target URL / Payment Reference และสร้าง Shortcode (เช่น Base62 / Hash)
+2. **Default Expiration Policy (7 Days TTL)**: 
+   - ทุก Shortcode จะมีอายุการใช้งาน **Default 7 วัน** (604,800 วินาที)
+   - บันทึก Mapping ลง **Redis Cache** ด้วย TTL `7 Days` (`SETEX shortlink:code 604800 payload`)
+3. **Expiration Validation**: เมื่อมีผู้ใช้งานเปิดลิงก์ หากพบว่าลิงก์หมดอายุแล้ว (`ErrCodeExpired` หรือ Key ใน Redis หายไป) ระบบจะตอบกลับด้วยหน้า UI / HTTP 410 Gone (Link Expired) ทันที
+4. **Event Generation**: ส่ง `shortlink.created` event เข้า Kafka เพื่อแจ้งให้ `payment-service` และ Consumer อื่นๆ ทราบ
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as User Browser
+    participant Gateway as API Gateway (Nginx)
+    participant Shortlink as shortlink-service (Go)
+    participant Redis
+    participant Payment as payment-service (Go)
+    participant Kafka
+
+    User->>Gateway: GET /s/:code (e.g., /s/pay99)
+    Gateway->>Shortlink: Forward GET /s/:code
+    activate Shortlink
+    
+    Shortlink->>Redis: GET shortlink:pay99
+    
+    alt Case 1: Link Expired (TTL > 7 Days or Key Missing)
+        Shortlink-->>User: 410 Gone / HTML (Notification: Link Expired)
+        
+    else Case 2: Link Valid & Active (TTL <= 7 Days)
+        Shortlink->>Shortlink: Fire-and-forget (Produce shortlink.clicked -> Kafka)
+        
+        Note over Shortlink,Payment: Content Forwarding (Browser URL remains /s/:code)
+        Shortlink->>Payment: GET /checkout/:paymentNo (Internal HTTP Fetch)
+        Payment-->>Shortlink: HTML UI + QR Code (text/html)
+        Shortlink-->>User: 200 OK (Content-Type: text/html - Checkout UI with QR Code)
+    end
+    deactivate Shortlink
+```
 
 ---
 
@@ -87,8 +123,8 @@ CREATE INDEX idx_outbox_status ON outbox(status);
 
 ### Redis Cache (`shortlink-service`)
 - **Key**: `shortlink:{code}`
-- **Value**: `{"payment_no": "PAY-12345", "target_url": "/checkout/PAY-12345"}`
-- **TTL**: 86400 seconds (24 Hours)
+- **Value**: `{"payment_no": "PAY-12345", "target_url": "/checkout/PAY-12345", "expires_at": "2026-08-07T20:00:00Z"}`
+- **TTL**: 604800 seconds (Default 7 Days / 168 Hours)
 
 ---
 
