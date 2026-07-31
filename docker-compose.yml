@@ -82,6 +82,28 @@ services:
       kafka:
         condition: service_healthy
 
+  payment-service:
+    build:
+      context: ./services/payment-service
+      dockerfile: Dockerfile
+    container_name: paylink-payment-service
+    restart: always
+    ports:
+      - "8081:8081"
+    environment:
+      PORT: "8081"
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: payment_db
+      KAFKA_BROKERS: kafka:29092
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
 volumes:
   pgdata:
     driver: local
