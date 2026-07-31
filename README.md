@@ -14,11 +14,11 @@ An enterprise-grade **Event-Driven Microservices Architecture** built with **Go 
 
 ```mermaid
 flowchart TD
-    subgraph Client & Edge Layer
+    subgraph ClientLayer["Client & Edge Layer"]
         User([Browser / Client]) --> Gateway[API Gateway\nNginx]
     end
 
-    subgraph Core Business Services (Go + Fiber)
+    subgraph CoreServices["Core Business Services (Go + Fiber)"]
         Gateway -->|HTTP / REST| ShortlinkSvc[shortlink-service\nGo + Fiber]
         Gateway -->|HTTP / REST| PaymentSvc[payment-service\nGo + Fiber + GORM]
         ShortlinkSvc -.->|Sync HTTP Read| PaymentSvc
@@ -28,18 +28,18 @@ flowchart TD
         PaymentSvc -->|Primary DB| Postgres[(PostgreSQL DB)]
     end
 
-    subgraph Messaging Backbone
+    subgraph MessagingBackbone["Messaging Backbone"]
         ShortlinkSvc -->|Produce: shortlink.clicked| Kafka{{Apache Kafka}}
         PaymentSvc -->|Outbox / Produce: payment.created, payment.status_updated| Kafka
     end
 
-    subgraph Asynchronous Consumers (Go)
+    subgraph AsyncConsumers["Asynchronous Consumers (Go)"]
         Kafka -->|Consume| NotifSvc[notification-service\nEmail/SMS/LINE]
         Kafka -->|Consume| AnalyticsConsumer[analytics-consumer]
         Kafka -->|Consume| AuditSvc[audit-service\nCompliance Log]
     end
 
-    subgraph Storage & Observability
+    subgraph ObservabilityStack["Storage & Observability"]
         AnalyticsConsumer -->|Direct Indexing| ES[(Elasticsearch)]
         AuditSvc -->|Append-only Storage| AuditDB[(Audit DB / Cold Storage)]
         
