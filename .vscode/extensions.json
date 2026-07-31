@@ -1,0 +1,9 @@
+{
+  "recommendations": [
+    "golang.go",
+    "ms-azuretools.vscode-docker",
+    "humao.rest-client",
+    "eamodio.gitlens",
+    "bierner.markdown-preview-github-styles"
+  ]
+}

@@ -1,0 +1,64 @@
+# Binaries & Executables
+bin/
+main
+*.exe
+*.exe?
+*.dll
+*.so
+*.dylib
+
+# Test & Coverage binaries
+*.test
+*.out
+coverage.txt
+coverage.html
+
+# Go workspace & vendor
+vendor/
+go.work
+go.work.sum
+
+# Operating System & IDE Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# VS Code specific (Keep config, ignore state/history)
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.history/
+*.code-workspace
+
+# JetBrains / GoLand
+.idea/
+*.iml
+
+# Environment Variables & Local Secrets
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.crt
+
+# Docker Data Volume Mounts (Local persistent data)
+.docker-data/
+pgdata/
+redisdata/
+esdata/
+kafkadata/
+
+# Log files
+*.log
+logs/
+
+# Temporary / Scratch files
+tmp/
+scratch/

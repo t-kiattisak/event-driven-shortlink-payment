@@ -1,0 +1,18 @@
+{
+  "go.useLanguageServer": true,
+  "go.gopls": {
+    "formatting.gofumpt": true,
+    "ui.semanticTokens": true
+  },
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": "explicit"
+  },
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+  "files.exclude": {
+    "**/.git": true,
+    "**/.DS_Store": true,
+    "**/vendor": true
+  }
+}
