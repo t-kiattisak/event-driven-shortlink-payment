@@ -44,15 +44,15 @@ sequenceDiagram
 ```
 
 ### 2.4 Shortcode Generation, Expiration & Domain Ownership
-`shortlink-service` เป็น **Single Source of Truth** สำหรับการสร้าง, ตรวจสอบสถานะวันหมดอายุ, และจัดการ Short Code ทั้งหมดในระบบ:
-1. **Shortcode Creation**: `shortlink-service` ให้บริการ API สำหรับสร้าง Shortcode (เช่น Base62 / Custom code) โดย `payment-service` จะเรียกสร้างในจังหวะสร้าง Payment และบันทึก `short_code` ลง PostgreSQL ทันที
+`shortlink-service` serves as the **Single Source of Truth** for shortcode generation, 7-day expiration validation, and code management across the platform:
+1. **Shortcode Creation**: `shortlink-service` exposes creation APIs (e.g. Base62 / Custom code algorithms). `payment-service` invokes this endpoint during payment creation and immediately persists the resulting `short_code` in PostgreSQL.
 2. **Default Expiration Policy (7 Days TTL)**: 
-   - ทุก Shortcode จะมีอายุการใช้งาน **Default 7 วัน** (604,800 วินาที)
-   - บันทึก Mapping ลง **Redis Cache** ด้วย TTL `7 Days` (`SETEX shortlink:code 604800 payload`)
-3. **Expiration Validation**: เมื่อมีผู้ใช้งานเปิดลิงก์ หากพบว่าลิงก์หมดอายุแล้ว (`ErrCodeExpired` หรือ Key ใน Redis หายไป) ระบบจะตอบกลับด้วยหน้า UI / HTTP 410 Gone (Link Expired) ทันที
+   - Every shortcode carries a **default 7-day expiration policy** (604,800 seconds).
+   - Code-to-Payment mappings are cached in **Redis** with a 7-day TTL (`SETEX shortlink:code 604800 payload`).
+3. **Expiration Validation**: During link resolution (`GET /s/:code`), if a link is found to be expired (`ErrCodeExpired` or missing Redis key), the service responds immediately with HTTP 410 Gone (Link Expired) HTML UI.
 4. **Inter-Service Communication & gRPC Roadmap**: 
-   - **Current Implementation**: บริการสื่อสารกันผ่าน HTTP REST API
-   - **gRPC Migration Plan (Planned Phase)**: เตรียมยกระดับการสื่อสารระหว่าง `payment-service` และ `shortlink-service` ไปใช้ **gRPC Protocol (HTTP/2 + Protocol Buffers)** เพื่อเพิ่ม Throughput, ลด Latency/Overhead ในการทำ Connection Handshake และรองรับ Strict Protobuf Schema Contracts ในระดับ Microservices
+   - **Current Implementation**: Services communicate internally via synchronous HTTP REST APIs.
+   - **gRPC Migration Plan (Planned Phase)**: Inter-service communications between `payment-service` and `shortlink-service` are scheduled for upgrade to **gRPC Protocol (HTTP/2 + Protocol Buffers)** to maximize throughput, eliminate connection handshake overhead, and enforce strict Protobuf schema contracts across microservices.
 
 ```mermaid
 sequenceDiagram
