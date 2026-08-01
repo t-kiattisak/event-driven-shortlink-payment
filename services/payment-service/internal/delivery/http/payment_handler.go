@@ -1,7 +1,6 @@
 package http
 
 import (
-	"html/template"
 	"net/http"
 
 	"github.com/gofiber/fiber/v2"
@@ -16,10 +15,7 @@ type PaymentHandler struct {
 func NewPaymentHandler(app *fiber.App, paymentUseCase usecase.PaymentUseCase) {
 	h := &PaymentHandler{paymentUseCase: paymentUseCase}
 
-	// HTML Rendered Page
-	app.Get("/checkout/:paymentNo", h.RenderCheckoutUI)
-
-	// REST API Routes
+	// REST API Routes (JSON Output Only)
 	api := app.Group("/api/v1/payments")
 	api.Post("/", h.CreatePayment)
 	api.Get("/:paymentNo", h.GetPayment)
@@ -69,23 +65,6 @@ func (h *PaymentHandler) GetPaymentByCode(c *fiber.Ctx) error {
 		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 	return c.JSON(fiber.Map{"data": payment})
-}
-
-func (h *PaymentHandler) RenderCheckoutUI(c *fiber.Ctx) error {
-	paymentNo := c.Params("paymentNo")
-	payment, err := h.paymentUseCase.GetPaymentByNo(c.UserContext(), paymentNo)
-	if err != nil {
-		return c.Status(http.StatusNotFound).SendString("Payment Invoice Not Found")
-	}
-
-	return c.Render("checkout", fiber.Map{
-		"PaymentNo":  payment.PaymentNo,
-		"Amount":     payment.Amount,
-		"Currency":   payment.Currency,
-		"Status":     payment.Status,
-		"QRCodeData": template.URL(payment.QRCodeData),
-		"CreatedAt":  payment.CreatedAt.Format("2006-01-02 15:04:05"),
-	})
 }
 
 func (h *PaymentHandler) UpdateStatus(c *fiber.Ctx) error {

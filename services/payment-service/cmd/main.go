@@ -75,6 +75,7 @@ func main() {
 	app.Use(logger.New())
 
 	http.NewPaymentHandler(app, paymentUseCase)
+	http.NewCheckoutUIHandler(app, paymentUseCase)
 
 	// 6. Graceful Shutdown Setup
 	port := getEnv("PORT", "8081")
