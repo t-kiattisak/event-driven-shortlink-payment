@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package shortlink.v1;
+
+option go_package = "github.com/t-kiattisak/event-driven-shortlink-payment/proto/shortlink/v1;shortlinkv1";
+
+service ShortlinkService {
+  rpc CreateShortlink (CreateShortlinkRequest) returns (CreateShortlinkResponse);
+}
+
+message CreateShortlinkRequest {
+  string payment_no = 1;
+  string target_url = 2;
+  string custom_code = 3;
+}
+
+message CreateShortlinkResponse {
+  string code = 1;
+  string payment_no = 2;
+  string target_url = 3;
+  int64 expires_at = 4;
+}
