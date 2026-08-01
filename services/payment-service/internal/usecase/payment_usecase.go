@@ -19,15 +19,18 @@ type PaymentUseCase interface {
 	GetPaymentByNo(ctx context.Context, paymentNo string) (*domain.Payment, error)
 	GetPaymentByShortCode(ctx context.Context, shortCode string) (*domain.Payment, error)
 	UpdatePaymentStatus(ctx context.Context, paymentNo string, status domain.PaymentStatus) error
-	AssociateShortCode(ctx context.Context, paymentNo, shortCode string) error
 }
 
 type paymentUseCase struct {
-	paymentRepo repository.PaymentRepository
+	paymentRepo     repository.PaymentRepository
+	shortlinkClient repository.ShortlinkClient
 }
 
-func NewPaymentUseCase(paymentRepo repository.PaymentRepository) PaymentUseCase {
-	return &paymentUseCase{paymentRepo: paymentRepo}
+func NewPaymentUseCase(paymentRepo repository.PaymentRepository, shortlinkClient repository.ShortlinkClient) PaymentUseCase {
+	return &paymentUseCase{
+		paymentRepo:     paymentRepo,
+		shortlinkClient: shortlinkClient,
+	}
 }
 
 func (u *paymentUseCase) CreatePayment(ctx context.Context, input domain.CreatePaymentInput) (*domain.Payment, error) {
@@ -39,8 +42,12 @@ func (u *paymentUseCase) CreatePayment(ctx context.Context, input domain.CreateP
 	}
 
 	paymentNo := fmt.Sprintf("PAY-%s-%s", time.Now().Format("20060102"), uuid.New().String()[:8])
-	if input.ShortCode == "" {
-		input.ShortCode = uuid.New().String()[:6]
+
+	// Call shortlink-service to generate unique shortcode & store in Redis (7-Day TTL)
+	shortCode, err := u.shortlinkClient.CreateShortlink(ctx, paymentNo)
+	if err != nil {
+		// Log warning but fallback to empty shortcode until Kafka consumer updates it
+		shortCode = ""
 	}
 
 	// Generate QR Code data (Base64 PNG)
@@ -53,7 +60,7 @@ func (u *paymentUseCase) CreatePayment(ctx context.Context, input domain.CreateP
 
 	payment := &domain.Payment{
 		PaymentNo:  paymentNo,
-		ShortCode:  input.ShortCode,
+		ShortCode:  shortCode,
 		Amount:     input.Amount,
 		Currency:   input.Currency,
 		Status:     domain.StatusPending,
@@ -65,7 +72,7 @@ func (u *paymentUseCase) CreatePayment(ctx context.Context, input domain.CreateP
 	// Prepare Outbox Event
 	eventPayload, _ := json.Marshal(map[string]interface{}{
 		"payment_no": paymentNo,
-		"short_code": input.ShortCode,
+		"short_code": shortCode,
 		"amount":     input.Amount,
 		"currency":   input.Currency,
 		"status":     payment.Status,
@@ -121,8 +128,4 @@ func (u *paymentUseCase) UpdatePaymentStatus(ctx context.Context, paymentNo stri
 	}
 
 	return u.paymentRepo.UpdateStatus(ctx, paymentNo, status, outbox)
-}
-
-func (u *paymentUseCase) AssociateShortCode(ctx context.Context, paymentNo, shortCode string) error {
-	return u.paymentRepo.AssociateShortCode(ctx, paymentNo, shortCode)
 }

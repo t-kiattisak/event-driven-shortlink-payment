@@ -32,7 +32,6 @@ type Payment struct {
 }
 
 type CreatePaymentInput struct {
-	Amount    float64 `json:"amount"`
-	Currency  string  `json:"currency"`
-	ShortCode string  `json:"short_code"`
+	Amount   float64 `json:"amount"`
+	Currency string  `json:"currency"`
 }

@@ -97,6 +97,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgrespassword
       POSTGRES_DB: payment_db
+      SHORTLINK_SERVICE_URL: http://shortlink-service:8082
       KAFKA_BROKERS: kafka:29092
     depends_on:
       postgres:

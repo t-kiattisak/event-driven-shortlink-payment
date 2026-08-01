@@ -14,7 +14,6 @@ import (
 	"github.com/gofiber/template/html/v2"
 
 	"github.com/t-kiattisak/event-driven-shortlink-payment/services/payment-service/internal/delivery/http"
-	pkafka "github.com/t-kiattisak/event-driven-shortlink-payment/services/payment-service/internal/delivery/kafka"
 	"github.com/t-kiattisak/event-driven-shortlink-payment/services/payment-service/internal/domain"
 	"github.com/t-kiattisak/event-driven-shortlink-payment/services/payment-service/internal/repository"
 	"github.com/t-kiattisak/event-driven-shortlink-payment/services/payment-service/internal/usecase"
@@ -36,6 +35,7 @@ func main() {
 	dbUser := getEnv("POSTGRES_USER", "postgres")
 	dbPass := getEnv("POSTGRES_PASSWORD", "postgrespassword")
 	dbName := getEnv("POSTGRES_DB", "payment_db")
+	shortlinkSvcURL := getEnv("SHORTLINK_SERVICE_URL", "http://localhost:8082")
 	kafkaBrokers := []string{getEnv("KAFKA_BROKERS", "localhost:9092")}
 
 	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
@@ -55,18 +55,16 @@ func main() {
 	// 3. Layer Initialization (Clean Architecture Dependency Injection)
 	paymentRepo := repository.NewPaymentRepository(db)
 	outboxRepo := repository.NewOutboxRepository(db)
-	paymentUseCase := usecase.NewPaymentUseCase(paymentRepo)
+	shortlinkClient := repository.NewShortlinkClient(shortlinkSvcURL)
+	paymentUseCase := usecase.NewPaymentUseCase(paymentRepo, shortlinkClient)
 
-	// 4. Start Background Workers & Consumers
+	// 4. Start Outbox Worker Background Goroutine
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	outboxWorker := usecase.NewOutboxWorker(outboxRepo, kafkaBrokers)
 	go outboxWorker.Start(ctx, 3*time.Second)
 	log.Println("Outbox worker started polling every 3 seconds...")
-
-	shortlinkConsumer := pkafka.NewShortlinkCreatedConsumer(kafkaBrokers, paymentUseCase)
-	go shortlinkConsumer.Start(ctx)
 
 	// 5. Fiber Web Server Setup with Views Engine
 	engine := html.New("./internal/delivery/views", ".html")
