@@ -45,12 +45,14 @@ sequenceDiagram
 
 ### 2.4 Shortcode Generation, Expiration & Domain Ownership
 `shortlink-service` เป็น **Single Source of Truth** สำหรับการสร้าง, ตรวจสอบสถานะวันหมดอายุ, และจัดการ Short Code ทั้งหมดในระบบ:
-1. **Shortcode Creation**: `shortlink-service` ให้บริการ `POST /api/v1/shortlinks` สำหรับรับ Target URL / Payment Reference และสร้าง Shortcode (เช่น Base62 / Hash)
+1. **Shortcode Creation**: `shortlink-service` ให้บริการ `POST /api/v1/shortlinks` สำหรับสร้าง Shortcode (เช่น Base62 / Custom code)
 2. **Default Expiration Policy (7 Days TTL)**: 
    - ทุก Shortcode จะมีอายุการใช้งาน **Default 7 วัน** (604,800 วินาที)
    - บันทึก Mapping ลง **Redis Cache** ด้วย TTL `7 Days` (`SETEX shortlink:code 604800 payload`)
-3. **Expiration Validation**: เมื่อมีผู้ใช้งานเปิดลิงก์ หากพบว่าลิงก์หมดอายุแล้ว (`ErrCodeExpired` หรือ Key ใน Redis หายไป) ระบบจะตอบกลับด้วยหน้า UI / HTTP 410 Gone (Link Expired) ทันที
-4. **Event Generation**: ส่ง `shortlink.created` event เข้า Kafka เพื่อแจ้งให้ `payment-service` และ Consumer อื่นๆ ทราบ
+3. **Async Event-Driven Coupling**:
+   - ยิง `shortlink.created` event เข้า Kafka
+   - `payment-service` ทำหน้าที่เป็น Consumer (`ShortlinkCreatedConsumer`) คอยรับ event และนำ `short_code` ไปอัปเดตผูกกับ `Payment` entity ใน PostgreSQL แบบ **Fully Decoupled (100% Async)**
+4. **Expiration Validation**: เมื่อมีผู้ใช้งานเปิดลิงก์ หากพบว่าลิงก์หมดอายุแล้ว (`ErrCodeExpired` หรือ Key ใน Redis หายไป) ระบบจะตอบกลับด้วยหน้า UI / HTTP 410 Gone (Link Expired) ทันที
 
 ```mermaid
 sequenceDiagram

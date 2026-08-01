@@ -104,6 +104,26 @@ services:
       kafka:
         condition: service_healthy
 
+  shortlink-service:
+    build:
+      context: ./services/shortlink-service
+      dockerfile: Dockerfile
+    container_name: paylink-shortlink-service
+    restart: always
+    ports:
+      - "8082:8082"
+    environment:
+      PORT: "8082"
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      PAYMENT_SERVICE_URL: http://payment-service:8081
+      KAFKA_BROKERS: kafka:29092
+    depends_on:
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
 volumes:
   pgdata:
     driver: local
