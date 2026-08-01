@@ -2,19 +2,19 @@ FROM golang:1.22-alpine AS builder
 
 WORKDIR /app
 
-COPY go.mod go.sum ./
+COPY proto ./proto
+COPY services/payment-service/go.mod services/payment-service/go.sum ./services/payment-service/
+WORKDIR /app/services/payment-service
 RUN go mod download
 
-COPY . .
+COPY services/payment-service .
 RUN CGO_ENABLED=0 GOOS=linux go build -o payment-service ./cmd/main.go
 
 FROM alpine:latest
 
 WORKDIR /app
 
-COPY --from=builder /app/payment-service .
-COPY --from=builder /app/internal/delivery/views ./internal/delivery/views
-
-EXPOSE 8081
+COPY --from=builder /app/services/payment-service/payment-service .
+COPY --from=builder /app/services/payment-service/internal/delivery/views ./internal/delivery/views
 
 CMD ["./payment-service"]

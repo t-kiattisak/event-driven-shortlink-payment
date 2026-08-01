@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"os/signal"
 	"syscall"
@@ -12,11 +13,13 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/template/html/v2"
-
+	paymentv1 "github.com/t-kiattisak/event-driven-shortlink-payment/proto/payment/v1"
+	pgrpc "github.com/t-kiattisak/event-driven-shortlink-payment/services/payment-service/internal/delivery/grpc"
 	"github.com/t-kiattisak/event-driven-shortlink-payment/services/payment-service/internal/delivery/http"
 	"github.com/t-kiattisak/event-driven-shortlink-payment/services/payment-service/internal/domain"
 	"github.com/t-kiattisak/event-driven-shortlink-payment/services/payment-service/internal/repository"
 	"github.com/t-kiattisak/event-driven-shortlink-payment/services/payment-service/internal/usecase"
+	"google.golang.org/grpc"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -57,6 +60,22 @@ func main() {
 	outboxRepo := repository.NewOutboxRepository(db)
 	shortlinkClient := repository.NewShortlinkClient(shortlinkSvcURL)
 	paymentUseCase := usecase.NewPaymentUseCase(paymentRepo, shortlinkClient)
+
+	// Start gRPC Server in Background Goroutine
+	grpcPort := getEnv("GRPC_PORT", "50051")
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", grpcPort))
+	if err == nil {
+		grpcServer := grpc.NewServer()
+		paymentv1.RegisterPaymentServiceServer(grpcServer, pgrpc.NewPaymentGRPCServer(paymentUseCase))
+		go func() {
+			log.Printf("payment-service gRPC server listening on port %s", grpcPort)
+			if err := grpcServer.Serve(lis); err != nil {
+				log.Printf("gRPC server error: %v", err)
+			}
+		}()
+	} else {
+		log.Printf("Failed to listen for gRPC on port %s: %v", grpcPort, err)
+	}
 
 	// 4. Start Outbox Worker Background Goroutine
 	ctx, cancel := context.WithCancel(context.Background())

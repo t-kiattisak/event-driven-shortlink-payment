@@ -84,14 +84,16 @@ services:
 
   payment-service:
     build:
-      context: ./services/payment-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: services/payment-service/Dockerfile
     container_name: paylink-payment-service
     restart: always
     ports:
       - "8081:8081"
+      - "50051:50051"
     environment:
       PORT: "8081"
+      GRPC_PORT: "50051"
       POSTGRES_HOST: postgres
       POSTGRES_PORT: "5432"
       POSTGRES_USER: postgres
@@ -107,14 +109,16 @@ services:
 
   shortlink-service:
     build:
-      context: ./services/shortlink-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: services/shortlink-service/Dockerfile
     container_name: paylink-shortlink-service
     restart: always
     ports:
       - "8082:8082"
+      - "50052:50052"
     environment:
       PORT: "8082"
+      GRPC_PORT: "50052"
       REDIS_HOST: redis
       REDIS_PORT: "6379"
       PAYMENT_SERVICE_URL: http://payment-service:8081
@@ -122,6 +126,18 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+      kafka:
+        condition: service_healthy
+
+  notification-service:
+    build:
+      context: ./services/notification-service
+      dockerfile: Dockerfile
+    container_name: paylink-notification-service
+    restart: always
+    environment:
+      KAFKA_BROKERS: kafka:29092
+    depends_on:
       kafka:
         condition: service_healthy
 

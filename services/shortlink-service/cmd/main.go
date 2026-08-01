@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"log"
+	"net"
 	"os"
 	"os/signal"
 	"syscall"
@@ -9,11 +11,13 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/redis/go-redis/v9"
-
+	shortlinkv1 "github.com/t-kiattisak/event-driven-shortlink-payment/proto/shortlink/v1"
+	sgrpc "github.com/t-kiattisak/event-driven-shortlink-payment/services/shortlink-service/internal/delivery/grpc"
 	"github.com/t-kiattisak/event-driven-shortlink-payment/services/shortlink-service/internal/delivery/http"
 	"github.com/t-kiattisak/event-driven-shortlink-payment/services/shortlink-service/internal/delivery/kafka"
 	"github.com/t-kiattisak/event-driven-shortlink-payment/services/shortlink-service/internal/repository"
 	"github.com/t-kiattisak/event-driven-shortlink-payment/services/shortlink-service/internal/usecase"
+	"google.golang.org/grpc"
 )
 
 func getEnv(key, fallback string) string {
@@ -42,6 +46,20 @@ func main() {
 	defer eventProducer.Close()
 
 	shortlinkUseCase := usecase.NewShortlinkUseCase(redisRepo, paymentClient, eventProducer)
+
+	// Start gRPC Server in Background Goroutine
+	grpcPort := getEnv("GRPC_PORT", "50052")
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", grpcPort))
+	if err == nil {
+		grpcServer := grpc.NewServer()
+		shortlinkv1.RegisterShortlinkServiceServer(grpcServer, sgrpc.NewShortlinkGRPCServer(shortlinkUseCase))
+		go func() {
+			log.Printf("shortlink-service gRPC server listening on port %s", grpcPort)
+			if err := grpcServer.Serve(lis); err != nil {
+				log.Printf("gRPC server error: %v", err)
+			}
+		}()
+	}
 
 	// 4. Fiber Web Server Initialization
 	app := fiber.New()
