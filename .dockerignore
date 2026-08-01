@@ -1,0 +1,21 @@
+# Git & Version Control
+.git
+.gitignore
+
+# Environment Variables & Secrets
+.env
+.env.*
+
+# Build Binaries & Temporary Files
+bin/
+tmp/
+*.exe
+*.out
+
+# Node / Frontend Build (if any)
+node_modules/
+
+# OS & IDE Files
+.DS_Store
+.vscode/
+.idea/
