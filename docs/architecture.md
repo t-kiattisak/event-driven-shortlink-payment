@@ -127,8 +127,8 @@ sequenceDiagram
     else Case 2: Link Valid & Active (TTL <= 7 Days)
         Shortlink->>Shortlink: Fire-and-forget (Produce shortlink.clicked -> Kafka)
         
-        Note over Shortlink,Payment: Content Forwarding (Browser URL remains /s/:code)
-        Shortlink->>Payment: GET /checkout/:paymentNo (Internal HTTP Fetch)
+        Note over Shortlink,Payment: Internal Inter-Service Call via gRPC / HTTP RPC (Browser URL remains /s/:code)
+        Shortlink->>Payment: FetchCheckoutHTML RPC / HTTP GET
         Payment-->>Shortlink: HTML UI + QR Code (text/html)
         Shortlink-->>User: 200 OK (Content-Type: text/html - Checkout UI with QR Code)
     end
