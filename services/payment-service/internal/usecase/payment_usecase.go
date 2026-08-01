@@ -19,6 +19,7 @@ type PaymentUseCase interface {
 	GetPaymentByNo(ctx context.Context, paymentNo string) (*domain.Payment, error)
 	GetPaymentByShortCode(ctx context.Context, shortCode string) (*domain.Payment, error)
 	UpdatePaymentStatus(ctx context.Context, paymentNo string, status domain.PaymentStatus) error
+	AssociateShortCode(ctx context.Context, paymentNo, shortCode string) error
 }
 
 type paymentUseCase struct {
@@ -120,4 +121,8 @@ func (u *paymentUseCase) UpdatePaymentStatus(ctx context.Context, paymentNo stri
 	}
 
 	return u.paymentRepo.UpdateStatus(ctx, paymentNo, status, outbox)
+}
+
+func (u *paymentUseCase) AssociateShortCode(ctx context.Context, paymentNo, shortCode string) error {
+	return u.paymentRepo.AssociateShortCode(ctx, paymentNo, shortCode)
 }

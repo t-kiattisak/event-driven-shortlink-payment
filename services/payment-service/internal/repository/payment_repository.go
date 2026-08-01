@@ -12,6 +12,7 @@ type PaymentRepository interface {
 	FindByPaymentNo(ctx context.Context, paymentNo string) (*domain.Payment, error)
 	FindByShortCode(ctx context.Context, shortCode string) (*domain.Payment, error)
 	UpdateStatus(ctx context.Context, paymentNo string, status domain.PaymentStatus, outbox *domain.Outbox) error
+	AssociateShortCode(ctx context.Context, paymentNo, shortCode string) error
 }
 
 type paymentRepository struct {
@@ -66,4 +67,11 @@ func (r *paymentRepository) UpdateStatus(ctx context.Context, paymentNo string, 
 		}
 		return nil
 	})
+}
+
+func (r *paymentRepository) AssociateShortCode(ctx context.Context, paymentNo, shortCode string) error {
+	return r.db.WithContext(ctx).
+		Model(&domain.Payment{}).
+		Where("payment_no = ?", paymentNo).
+		Update("short_code", shortCode).Error
 }

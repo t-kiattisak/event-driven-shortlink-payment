@@ -14,6 +14,7 @@ import (
 	"github.com/gofiber/template/html/v2"
 
 	"github.com/t-kiattisak/event-driven-shortlink-payment/services/payment-service/internal/delivery/http"
+	pkafka "github.com/t-kiattisak/event-driven-shortlink-payment/services/payment-service/internal/delivery/kafka"
 	"github.com/t-kiattisak/event-driven-shortlink-payment/services/payment-service/internal/domain"
 	"github.com/t-kiattisak/event-driven-shortlink-payment/services/payment-service/internal/repository"
 	"github.com/t-kiattisak/event-driven-shortlink-payment/services/payment-service/internal/usecase"
@@ -56,13 +57,16 @@ func main() {
 	outboxRepo := repository.NewOutboxRepository(db)
 	paymentUseCase := usecase.NewPaymentUseCase(paymentRepo)
 
-	// 4. Start Outbox Worker Background Goroutine
+	// 4. Start Background Workers & Consumers
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	outboxWorker := usecase.NewOutboxWorker(outboxRepo, kafkaBrokers)
 	go outboxWorker.Start(ctx, 3*time.Second)
 	log.Println("Outbox worker started polling every 3 seconds...")
+
+	shortlinkConsumer := pkafka.NewShortlinkCreatedConsumer(kafkaBrokers, paymentUseCase)
+	go shortlinkConsumer.Start(ctx)
 
 	// 5. Fiber Web Server Setup with Views Engine
 	engine := html.New("./internal/delivery/views", ".html")
