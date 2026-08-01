@@ -55,7 +55,7 @@ sequenceDiagram
    - **gRPC Migration Plan (Planned Phase)**: Inter-service communications between `payment-service` and `shortlink-service` are scheduled for upgrade to **gRPC Protocol (HTTP/2 + Protocol Buffers)** to maximize throughput, eliminate connection handshake overhead, and enforce strict Protobuf schema contracts across microservices.
 
 ### 2.5 gRPC Protobuf Interface Definitions & RPC Contracts
-เพื่อเตรียมความพร้อมสำหรับการสื่อสารความเร็วสูง (High-Throughput Internal gRPC) ระหว่าง `payment-service` และ `shortlink-service` ในเฟสปรับแต่งประสิทธิภาพ:
+To support high-throughput internal microservice communication between `payment-service` and `shortlink-service`, the following Protobuf schemas define the gRPC contracts for the optimization phase:
 
 #### 1. Shortlink Service Proto (`proto/shortlink.proto`)
 ```protobuf
