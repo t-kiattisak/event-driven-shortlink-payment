@@ -50,7 +50,9 @@ sequenceDiagram
    - ทุก Shortcode จะมีอายุการใช้งาน **Default 7 วัน** (604,800 วินาที)
    - บันทึก Mapping ลง **Redis Cache** ด้วย TTL `7 Days` (`SETEX shortlink:code 604800 payload`)
 3. **Expiration Validation**: เมื่อมีผู้ใช้งานเปิดลิงก์ หากพบว่าลิงก์หมดอายุแล้ว (`ErrCodeExpired` หรือ Key ใน Redis หายไป) ระบบจะตอบกลับด้วยหน้า UI / HTTP 410 Gone (Link Expired) ทันที
-4. **Inter-Service Communication**: ในปัจจุบันบริการคุยกันผ่าน HTTP REST API และพร้อมสำหรับยกระดับเป็น **gRPC (HTTP/2 + Protobuf)** สำหรับ High Throughput ในอนาคต
+4. **Inter-Service Communication & gRPC Roadmap**: 
+   - **Current Implementation**: บริการสื่อสารกันผ่าน HTTP REST API
+   - **gRPC Migration Plan (Planned Phase)**: เตรียมยกระดับการสื่อสารระหว่าง `payment-service` และ `shortlink-service` ไปใช้ **gRPC Protocol (HTTP/2 + Protocol Buffers)** เพื่อเพิ่ม Throughput, ลด Latency/Overhead ในการทำ Connection Handshake และรองรับ Strict Protobuf Schema Contracts ในระดับ Microservices
 
 ```mermaid
 sequenceDiagram

@@ -64,6 +64,7 @@ flowchart TD
    - **Logs**: Container stdout $\rightarrow$ Fluent Bit $\rightarrow$ Elasticsearch $\rightarrow$ Kibana
    - **Metrics**: `/metrics` $\rightarrow$ Prometheus $\rightarrow$ Grafana
    - **Traces**: OpenTelemetry SDK $\rightarrow$ Jaeger (Distributed Waterfall Tracing)
+6. **gRPC Inter-Service Roadmap**: Prepared for upgrading internal communication (`payment-service` $\leftrightarrow$ `shortlink-service`) to **gRPC (HTTP/2 + Protobuf)** for high-throughput & binary serialization.
 
 ---
 
