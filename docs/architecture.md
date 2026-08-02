@@ -99,11 +99,22 @@ message FetchCheckoutHTMLRequest {
   string payment_no = 1;
 }
 
-message FetchCheckoutHTMLResponse {
-  bytes html_content = 1;
-  int32 status_code = 2;
-}
-```
+### 2.6 Analytics Consumer & Data Pipeline
+`analytics-consumer` functions as an asynchronous worker that ingests multi-topic events from Apache Kafka and aggregates analytics into PostgreSQL (`audit_db`):
+1. **Multi-Topic Ingestion**:
+   - **`shortlink.clicked`**: Captures shortlink click telemetry (IP address, User-Agent, referer, shortcode, payment reference).
+   - **`payment.created`**: Records new payment invoice creations for revenue analytics.
+   - **`payment.status_updated`**: Tracks payment lifecycle state transitions (`PENDING` $\rightarrow$ `PAID` / `EXPIRED`).
+2. **Database Persistence**: Persists structured metrics into `click_analytics` and `payment_analytics` tables using GORM `Upsert` and conflict-free clauses.
+
+### 2.7 Full Observability Stack Architecture (Planned Roadmap)
+To achieve production-grade visibility across all microservices, the platform incorporates a full Observability Stack:
+1. **Metrics Collection (Prometheus)**:
+   - Scrapes `/metrics` endpoints across `payment-service` (`:8081`), `shortlink-service` (`:8082`), and Kafka brokers every 5 seconds.
+2. **Centralized Visual Dashboards (Grafana)**:
+   - Pre-configured Grafana instance (`:3000`) visualizing request rates, P99 latency, error rates, and conversion metrics.
+3. **Distributed Waterfall Tracing (Jaeger & OpenTelemetry)**:
+   - Propagates W3C trace context headers across HTTP/gRPC boundaries to visualize end-to-end request flows in Jaeger UI (`:16686`).
 
 ```mermaid
 sequenceDiagram
