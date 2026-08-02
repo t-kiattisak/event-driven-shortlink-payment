@@ -141,6 +141,25 @@ services:
       kafka:
         condition: service_healthy
 
+  analytics-consumer:
+    build:
+      context: .
+      dockerfile: services/analytics-consumer/Dockerfile
+    container_name: paylink-analytics-consumer
+    restart: always
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: audit_db
+      KAFKA_BROKERS: kafka:29092
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
 volumes:
   pgdata:
     driver: local

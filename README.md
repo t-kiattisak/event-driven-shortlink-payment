@@ -59,11 +59,10 @@ flowchart TD
 1. **Clean Architecture Standards**: Strictly enforces 4 layers (`Domain`, `UseCase`, `Repository/Adapter`, `Delivery`) with inner dependency rules for maximum testability and decoupling.
 2. **Server-Side Rendered Checkout UI**: `payment-service` serves responsive HTML UI containing dynamic PromptPay/QR Code directly to the client browser.
 3. **Transactional Outbox Pattern**: Guarantees zero message loss when dual-writing between PostgreSQL and Kafka in `payment-service`.
-4. **Fire-and-Forget Analytics Tracking**: `shortlink-service` emits `shortlink.clicked` event asynchronously without adding latency to the client request.
-5. **Three Pillars of Observability**:
-   - **Logs**: Container stdout $\rightarrow$ Fluent Bit $\rightarrow$ Elasticsearch $\rightarrow$ Kibana
-   - **Metrics**: `/metrics` $\rightarrow$ Prometheus $\rightarrow$ Grafana
-   - **Traces**: OpenTelemetry SDK $\rightarrow$ Jaeger (Distributed Waterfall Tracing)
+4. **analytics-consumer**: Multi-topic Kafka consumer that processes `shortlink.clicked`, `payment.created`, and `payment.status_updated` events into PostgreSQL (`audit_db`) for analytics and reporting.
+5. **Observability Stack (Roadmap)**:
+   - **Metrics**: `/metrics` endpoints $\rightarrow$ Prometheus $\rightarrow$ Grafana Dashboards (`:3000`)
+   - **Traces**: OpenTelemetry SDK $\rightarrow$ Jaeger (`:16686`) for end-to-end distributed waterfall tracing
 6. **gRPC Inter-Service Roadmap**: Prepared for upgrading internal communication (`payment-service` $\leftrightarrow$ `shortlink-service`) to **gRPC (HTTP/2 + Protobuf)** for high-throughput & binary serialization.
 
 ---
