@@ -116,6 +116,11 @@ To achieve production-grade visibility across all microservices, the platform in
 3. **Distributed Waterfall Tracing (Jaeger & OpenTelemetry)**:
    - Propagates W3C trace context headers across HTTP/gRPC boundaries to visualize end-to-end request flows in Jaeger UI (`:16686`).
 
+### 2.8 Audit Service & Immutable Compliance Logs
+`audit-service` functions as a dedicated compliance engine for financial auditing:
+1. **Multi-Topic Compliance Monitoring**: Subscribes to all domain topics (`payment.created`, `payment.status_updated`, `shortlink.created`, `shortlink.clicked`).
+2. **Immutable Audit Trail**: Writes raw event payloads into the `audit_logs` table in PostgreSQL (`audit_db`) with timestamping and event ID tracking for regulatory compliance.
+
 ```mermaid
 sequenceDiagram
     autonumber
