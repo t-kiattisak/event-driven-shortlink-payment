@@ -60,7 +60,8 @@ flowchart TD
 2. **Server-Side Rendered Checkout UI**: `payment-service` serves responsive HTML UI containing dynamic PromptPay/QR Code directly to the client browser.
 3. **Transactional Outbox Pattern**: Guarantees zero message loss when dual-writing between PostgreSQL and Kafka in `payment-service`.
 4. **analytics-consumer**: Multi-topic Kafka consumer that processes `shortlink.clicked`, `payment.created`, and `payment.status_updated` events into PostgreSQL (`audit_db`) for analytics and reporting.
-5. **Observability Stack (Roadmap)**:
+5. **audit-service**: Consumes all domain events (`payment.created`, `payment.status_updated`, `shortlink.created`, `shortlink.clicked`) into an immutable `audit_logs` table in PostgreSQL (`audit_db`) for financial compliance auditing.
+6. **Observability Stack (Roadmap)**:
    - **Metrics**: `/metrics` endpoints $\rightarrow$ Prometheus $\rightarrow$ Grafana Dashboards (`:3000`)
    - **Traces**: OpenTelemetry SDK $\rightarrow$ Jaeger (`:16686`) for end-to-end distributed waterfall tracing
 6. **gRPC Inter-Service Roadmap**: Prepared for upgrading internal communication (`payment-service` $\leftrightarrow$ `shortlink-service`) to **gRPC (HTTP/2 + Protobuf)** for high-throughput & binary serialization.
