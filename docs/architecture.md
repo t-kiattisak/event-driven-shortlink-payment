@@ -99,6 +99,12 @@ message FetchCheckoutHTMLRequest {
   string payment_no = 1;
 }
 
+message FetchCheckoutHTMLResponse {
+  bytes html_content = 1;
+  int32 status_code = 2;
+}
+```
+
 ### 2.6 Analytics Consumer & Data Pipeline
 `analytics-consumer` functions as an asynchronous worker that ingests multi-topic events from Apache Kafka and aggregates analytics into PostgreSQL (`audit_db`):
 1. **Multi-Topic Ingestion**:
