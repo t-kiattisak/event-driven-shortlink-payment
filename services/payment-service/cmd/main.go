@@ -11,8 +11,10 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/adaptor"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/template/html/v2"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	paymentv1 "github.com/t-kiattisak/event-driven-shortlink-payment/proto/payment/v1"
 	pgrpc "github.com/t-kiattisak/event-driven-shortlink-payment/services/payment-service/internal/delivery/grpc"
 	"github.com/t-kiattisak/event-driven-shortlink-payment/services/payment-service/internal/delivery/http"
@@ -85,13 +87,17 @@ func main() {
 	go outboxWorker.Start(ctx, 3*time.Second)
 	log.Println("Outbox worker started polling every 3 seconds...")
 
-	// 5. Fiber Web Server Setup with Views Engine
+	// 5. Fiber Web Server Setup with Views Engine & Prometheus Metrics
 	engine := html.New("./internal/delivery/views", ".html")
 	engine.Reload(true)
+
 	app := fiber.New(fiber.Config{
 		Views: engine,
 	})
 	app.Use(logger.New())
+
+	// Prometheus Metrics Endpoint
+	app.Get("/metrics", adaptor.HTTPHandler(promhttp.Handler()))
 
 	http.NewPaymentHandler(app, paymentUseCase)
 	http.NewCheckoutUIHandler(app, paymentUseCase)
