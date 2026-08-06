@@ -9,7 +9,9 @@ import (
 	"syscall"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/adaptor"
 	"github.com/gofiber/fiber/v2/middleware/logger"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/redis/go-redis/v9"
 	shortlinkv1 "github.com/t-kiattisak/event-driven-shortlink-payment/proto/shortlink/v1"
 	sgrpc "github.com/t-kiattisak/event-driven-shortlink-payment/services/shortlink-service/internal/delivery/grpc"
@@ -61,9 +63,12 @@ func main() {
 		}()
 	}
 
-	// 4. Fiber Web Server Initialization
+	// 5. Fiber Web Server Initialization with Prometheus Metrics
 	app := fiber.New()
 	app.Use(logger.New())
+
+	// Prometheus Metrics Endpoint
+	app.Get("/metrics", adaptor.HTTPHandler(promhttp.Handler()))
 
 	http.NewShortlinkHandler(app, shortlinkUseCase)
 
