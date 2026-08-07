@@ -1,7 +1,9 @@
 package grpc
 
 import (
+	"bytes"
 	"context"
+	"html/template"
 
 	"github.com/t-kiattisak/event-driven-shortlink-payment/proto/payment/v1"
 	"github.com/t-kiattisak/event-driven-shortlink-payment/services/payment-service/internal/usecase"
@@ -12,11 +14,17 @@ import (
 type PaymentGRPCServer struct {
 	paymentv1.UnimplementedPaymentServiceServer
 	paymentUseCase usecase.PaymentUseCase
+	tmpl           *template.Template
 }
 
 func NewPaymentGRPCServer(paymentUseCase usecase.PaymentUseCase) *PaymentGRPCServer {
+	tmpl, err := template.ParseFiles("./internal/delivery/views/checkout.html")
+	if err != nil {
+		tmpl = nil
+	}
 	return &PaymentGRPCServer{
 		paymentUseCase: paymentUseCase,
+		tmpl:           tmpl,
 	}
 }
 
@@ -30,10 +38,30 @@ func (s *PaymentGRPCServer) FetchCheckoutHTML(ctx context.Context, req *paymentv
 		return nil, status.Errorf(codes.NotFound, "payment invoice not found: %v", err)
 	}
 
-	// Simple payload return for gRPC content forwarding
-	_ = payment
+	if s.tmpl == nil {
+		var parseErr error
+		s.tmpl, parseErr = template.ParseFiles("./internal/delivery/views/checkout.html")
+		if parseErr != nil {
+			return nil, status.Errorf(codes.Internal, "failed to parse template: %v", parseErr)
+		}
+	}
+
+	var buf bytes.Buffer
+	data := map[string]interface{}{
+		"PaymentNo":  payment.PaymentNo,
+		"Amount":     payment.Amount,
+		"Currency":   payment.Currency,
+		"Status":     payment.Status,
+		"QRCodeData": template.URL(payment.QRCodeData),
+		"CreatedAt":  payment.CreatedAt.Format("2006-01-02 15:04:05"),
+	}
+
+	if err := s.tmpl.Execute(&buf, data); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to execute template: %v", err)
+	}
 
 	return &paymentv1.FetchCheckoutHTMLResponse{
-		StatusCode: 200,
+		HtmlContent: buf.Bytes(),
+		StatusCode:  200,
 	}, nil
 }
