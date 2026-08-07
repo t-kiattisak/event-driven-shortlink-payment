@@ -33,7 +33,6 @@ func main() {
 	// 1. Environment Configurations
 	redisHost := getEnv("REDIS_HOST", "localhost")
 	redisPort := getEnv("REDIS_PORT", "6379")
-	paymentSvcURL := getEnv("PAYMENT_SERVICE_URL", "http://localhost:8081")
 	kafkaBrokers := []string{getEnv("KAFKA_BROKERS", "localhost:9092")}
 
 	// 2. Redis Client Initialization
@@ -41,13 +40,19 @@ func main() {
 		Addr: redisHost + ":" + redisPort,
 	})
 
-	// 3. Layer Initialization (Clean Architecture DI)
+	// 4. Layer Initialization (Clean Architecture)
 	redisRepo := repository.NewRedisRepository(redisClient)
-	paymentClient := repository.NewPaymentClient(paymentSvcURL)
-	eventProducer := kafka.NewEventProducer(kafkaBrokers)
-	defer eventProducer.Close()
+	
+	paymentGRPCAddress := getEnv("PAYMENT_SERVICE_GRPC_URL", "payment-service:50051")
+	paymentGRPCClient, err := repository.NewPaymentGRPCClient(paymentGRPCAddress)
+	if err != nil {
+		log.Fatalf("Failed to initialize Payment gRPC Client: %v", err)
+	}
+	defer paymentGRPCClient.Close()
 
-	shortlinkUseCase := usecase.NewShortlinkUseCase(redisRepo, paymentClient, eventProducer)
+	paymentClient := repository.NewPaymentClient(paymentGRPCClient)
+	kafkaProducer := kafka.NewEventProducer(kafkaBrokers)
+	shortlinkUseCase := usecase.NewShortlinkUseCase(redisRepo, paymentClient, kafkaProducer)
 
 	// Start gRPC Server in Background Goroutine
 	grpcPort := getEnv("GRPC_PORT", "50052")
