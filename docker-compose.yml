@@ -122,6 +122,7 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: "6379"
       PAYMENT_SERVICE_URL: http://payment-service:8081
+      PAYMENT_SERVICE_GRPC_URL: payment-service:50051
       KAFKA_BROKERS: kafka:29092
     depends_on:
       redis:
