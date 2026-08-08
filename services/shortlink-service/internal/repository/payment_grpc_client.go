@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/t-kiattisak/event-driven-shortlink-payment/proto/payment/v1"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -21,7 +22,10 @@ type paymentGRPCClient struct {
 }
 
 func NewPaymentGRPCClient(targetAddress string) (PaymentGRPCClient, error) {
-	conn, err := grpc.Dial(targetAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.Dial(targetAddress,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to payment gRPC server: %w", err)
 	}

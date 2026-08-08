@@ -101,6 +101,7 @@ services:
       POSTGRES_DB: payment_db
       SHORTLINK_SERVICE_URL: http://shortlink-service:8082
       KAFKA_BROKERS: kafka:29092
+      JAEGER_OTLP_ENDPOINT: jaeger:4318
     depends_on:
       postgres:
         condition: service_healthy
@@ -124,6 +125,7 @@ services:
       PAYMENT_SERVICE_URL: http://payment-service:8081
       PAYMENT_SERVICE_GRPC_URL: payment-service:50051
       KAFKA_BROKERS: kafka:29092
+      JAEGER_OTLP_ENDPOINT: jaeger:4318
     depends_on:
       redis:
         condition: service_healthy

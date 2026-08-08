@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net"
@@ -17,8 +18,10 @@ import (
 	sgrpc "github.com/t-kiattisak/event-driven-shortlink-payment/services/shortlink-service/internal/delivery/grpc"
 	"github.com/t-kiattisak/event-driven-shortlink-payment/services/shortlink-service/internal/delivery/http"
 	"github.com/t-kiattisak/event-driven-shortlink-payment/services/shortlink-service/internal/delivery/kafka"
+	"github.com/t-kiattisak/event-driven-shortlink-payment/services/shortlink-service/internal/pkg/tracer"
 	"github.com/t-kiattisak/event-driven-shortlink-payment/services/shortlink-service/internal/repository"
 	"github.com/t-kiattisak/event-driven-shortlink-payment/services/shortlink-service/internal/usecase"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 )
 
@@ -34,6 +37,13 @@ func main() {
 	redisHost := getEnv("REDIS_HOST", "localhost")
 	redisPort := getEnv("REDIS_PORT", "6379")
 	kafkaBrokers := []string{getEnv("KAFKA_BROKERS", "localhost:9092")}
+	jaegerEndpoint := getEnv("JAEGER_OTLP_ENDPOINT", "jaeger:4318")
+
+	// Initialize OpenTelemetry Tracer
+	shutdownTracer, err := tracer.InitTracer("shortlink-service", jaegerEndpoint)
+	if err == nil {
+		defer func() { _ = shutdownTracer(context.Background()) }()
+	}
 
 	// 2. Redis Client Initialization
 	redisClient := redis.NewClient(&redis.Options{
@@ -54,11 +64,13 @@ func main() {
 	kafkaProducer := kafka.NewEventProducer(kafkaBrokers)
 	shortlinkUseCase := usecase.NewShortlinkUseCase(redisRepo, paymentClient, kafkaProducer)
 
-	// Start gRPC Server in Background Goroutine
+	// Start gRPC Server in Background Goroutine with OpenTelemetry StatsHandler
 	grpcPort := getEnv("GRPC_PORT", "50052")
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", grpcPort))
 	if err == nil {
-		grpcServer := grpc.NewServer()
+		grpcServer := grpc.NewServer(
+			grpc.StatsHandler(otelgrpc.NewServerHandler()),
+		)
 		shortlinkv1.RegisterShortlinkServiceServer(grpcServer, sgrpc.NewShortlinkGRPCServer(shortlinkUseCase))
 		go func() {
 			log.Printf("shortlink-service gRPC server listening on port %s", grpcPort)
