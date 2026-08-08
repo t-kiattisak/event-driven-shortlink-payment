@@ -19,8 +19,10 @@ import (
 	pgrpc "github.com/t-kiattisak/event-driven-shortlink-payment/services/payment-service/internal/delivery/grpc"
 	"github.com/t-kiattisak/event-driven-shortlink-payment/services/payment-service/internal/delivery/http"
 	"github.com/t-kiattisak/event-driven-shortlink-payment/services/payment-service/internal/domain"
+	"github.com/t-kiattisak/event-driven-shortlink-payment/services/payment-service/internal/pkg/tracer"
 	"github.com/t-kiattisak/event-driven-shortlink-payment/services/payment-service/internal/repository"
 	"github.com/t-kiattisak/event-driven-shortlink-payment/services/payment-service/internal/usecase"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -42,6 +44,13 @@ func main() {
 	dbName := getEnv("POSTGRES_DB", "payment_db")
 	shortlinkSvcURL := getEnv("SHORTLINK_SERVICE_URL", "http://localhost:8082")
 	kafkaBrokers := []string{getEnv("KAFKA_BROKERS", "localhost:9092")}
+	jaegerEndpoint := getEnv("JAEGER_OTLP_ENDPOINT", "jaeger:4318")
+
+	// Initialize OpenTelemetry Tracer
+	shutdownTracer, err := tracer.InitTracer("payment-service", jaegerEndpoint)
+	if err == nil {
+		defer func() { _ = shutdownTracer(context.Background()) }()
+	}
 
 	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 		dbHost, dbPort, dbUser, dbPass, dbName)
@@ -63,11 +72,13 @@ func main() {
 	shortlinkClient := repository.NewShortlinkClient(shortlinkSvcURL)
 	paymentUseCase := usecase.NewPaymentUseCase(paymentRepo, shortlinkClient)
 
-	// Start gRPC Server in Background Goroutine
+	// Start gRPC Server in Background Goroutine with OpenTelemetry Tracing StatsHandler
 	grpcPort := getEnv("GRPC_PORT", "50051")
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", grpcPort))
 	if err == nil {
-		grpcServer := grpc.NewServer()
+		grpcServer := grpc.NewServer(
+			grpc.StatsHandler(otelgrpc.NewServerHandler()),
+		)
 		paymentv1.RegisterPaymentServiceServer(grpcServer, pgrpc.NewPaymentGRPCServer(paymentUseCase))
 		go func() {
 			log.Printf("payment-service gRPC server listening on port %s", grpcPort)
