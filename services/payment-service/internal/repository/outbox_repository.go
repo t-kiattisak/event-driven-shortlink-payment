@@ -10,7 +10,7 @@ import (
 type OutboxRepository interface {
 	FetchPending(ctx context.Context, limit int) ([]domain.Outbox, error)
 	MarkProcessed(ctx context.Context, id string) error
-	MarkFailed(ctx context.Context, id string) error
+	MarkFailed(ctx context.Context, id string, err error) error
 }
 
 type outboxRepository struct {
@@ -23,8 +23,9 @@ func NewOutboxRepository(db *gorm.DB) OutboxRepository {
 
 func (r *outboxRepository) FetchPending(ctx context.Context, limit int) ([]domain.Outbox, error) {
 	var records []domain.Outbox
+	// Fetch PENDING events OR FAILED events with retry_count < 5
 	err := r.db.WithContext(ctx).
-		Where("status = ?", domain.OutboxPending).
+		Where("status = ? OR (status = ? AND retry_count < ?)", domain.OutboxPending, domain.OutboxFailed, 5).
 		Order("created_at ASC").
 		Limit(limit).
 		Find(&records).Error
@@ -35,12 +36,24 @@ func (r *outboxRepository) MarkProcessed(ctx context.Context, id string) error {
 	return r.db.WithContext(ctx).
 		Model(&domain.Outbox{}).
 		Where("id = ?", id).
-		Update("status", domain.OutboxProcessed).Error
+		Updates(map[string]interface{}{
+			"status":     domain.OutboxProcessed,
+			"last_error": nil,
+		}).Error
 }
 
-func (r *outboxRepository) MarkFailed(ctx context.Context, id string) error {
+func (r *outboxRepository) MarkFailed(ctx context.Context, id string, failureErr error) error {
+	errMsg := ""
+	if failureErr != nil {
+		errMsg = failureErr.Error()
+	}
+
 	return r.db.WithContext(ctx).
 		Model(&domain.Outbox{}).
 		Where("id = ?", id).
-		Update("status", domain.OutboxFailed).Error
+		Updates(map[string]interface{}{
+			"status":      domain.OutboxFailed,
+			"retry_count": gorm.Expr("retry_count + ?", 1),
+			"last_error":  errMsg,
+		}).Error
 }

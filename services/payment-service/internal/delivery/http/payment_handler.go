@@ -2,8 +2,11 @@ package http
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/redis/go-redis/v9"
+	"github.com/t-kiattisak/event-driven-shortlink-payment/services/payment-service/internal/delivery/http/middleware"
 	"github.com/t-kiattisak/event-driven-shortlink-payment/services/payment-service/internal/domain"
 	"github.com/t-kiattisak/event-driven-shortlink-payment/services/payment-service/internal/usecase"
 )
@@ -12,12 +15,23 @@ type PaymentHandler struct {
 	paymentUseCase usecase.PaymentUseCase
 }
 
-func NewPaymentHandler(app *fiber.App, paymentUseCase usecase.PaymentUseCase) {
+func NewPaymentHandler(app *fiber.App, paymentUseCase usecase.PaymentUseCase, rdb *redis.Client) {
 	h := &PaymentHandler{paymentUseCase: paymentUseCase}
 
 	// REST API Routes (JSON Output Only)
 	api := app.Group("/api/v1/payments")
-	api.Post("/", h.CreatePayment)
+
+	// Apply Rate Limiting (60 req/min) & Idempotency Key Validation (30s lock, 24h cache)
+	if rdb != nil {
+		api.Post("/",
+			middleware.NewRateLimiter(60, time.Minute),
+			middleware.IdempotencyMiddleware(rdb, 30*time.Second, 24*time.Hour),
+			h.CreatePayment,
+		)
+	} else {
+		api.Post("/", middleware.NewRateLimiter(60, time.Minute), h.CreatePayment)
+	}
+
 	api.Get("/:paymentNo", h.GetPayment)
 	api.Get("/code/:code", h.GetPaymentByCode)
 	api.Patch("/:paymentNo/status", h.UpdateStatus)

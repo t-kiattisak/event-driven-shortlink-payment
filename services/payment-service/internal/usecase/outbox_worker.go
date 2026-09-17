@@ -68,7 +68,7 @@ func (w *OutboxWorker) processPendingEvents(ctx context.Context) {
 
 		if err := writer.WriteMessages(ctx, msg); err != nil {
 			log.Printf("[OutboxWorker] Failed to publish message %s to topic %s: %v", record.ID, record.Topic, err)
-			_ = w.outboxRepo.MarkFailed(ctx, record.ID)
+			_ = w.outboxRepo.MarkFailed(ctx, record.ID, err)
 			continue
 		}
 

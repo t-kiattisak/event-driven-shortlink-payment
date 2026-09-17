@@ -2,8 +2,10 @@ package http
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/t-kiattisak/event-driven-shortlink-payment/services/shortlink-service/internal/delivery/http/middleware"
 	"github.com/t-kiattisak/event-driven-shortlink-payment/services/shortlink-service/internal/domain"
 	"github.com/t-kiattisak/event-driven-shortlink-payment/services/shortlink-service/internal/usecase"
 )
@@ -15,11 +17,11 @@ type ShortlinkHandler struct {
 func NewShortlinkHandler(app *fiber.App, useCase usecase.ShortlinkUseCase) {
 	h := &ShortlinkHandler{useCase: useCase}
 
-	// Content Forwarding Endpoint (URL remains /s/:code)
-	app.Get("/s/:code", h.ResolveShortlink)
+	// Content Forwarding Endpoint (URL remains /s/:code) - Rate limit: 120 requests / minute per IP
+	app.Get("/s/:code", middleware.NewRateLimiter(120, time.Minute), h.ResolveShortlink)
 
-	// REST API Endpoint
-	api := app.Group("/api/v1/shortlinks")
+	// REST API Endpoint - Rate limit: 60 requests / minute per IP
+	api := app.Group("/api/v1/shortlinks", middleware.NewRateLimiter(60, time.Minute))
 	api.Post("/", h.CreateShortlink)
 }
 

@@ -15,6 +15,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/template/html/v2"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/redis/go-redis/v9"
 	paymentv1 "github.com/t-kiattisak/event-driven-shortlink-payment/proto/payment/v1"
 	pgrpc "github.com/t-kiattisak/event-driven-shortlink-payment/services/payment-service/internal/delivery/grpc"
 	"github.com/t-kiattisak/event-driven-shortlink-payment/services/payment-service/internal/delivery/http"
@@ -98,7 +99,14 @@ func main() {
 	go outboxWorker.Start(ctx, 3*time.Second)
 	log.Println("Outbox worker started polling every 3 seconds...")
 
-	// 5. Fiber Web Server Setup with Views Engine & Prometheus Metrics
+	// 5. Redis Client Setup for Idempotency
+	redisHost := getEnv("REDIS_HOST", "localhost")
+	redisPort := getEnv("REDIS_PORT", "6379")
+	redisClient := redis.NewClient(&redis.Options{
+		Addr: redisHost + ":" + redisPort,
+	})
+
+	// 6. Fiber Web Server Setup with Views Engine & Prometheus Metrics
 	engine := html.New("./internal/delivery/views", ".html")
 	engine.Reload(true)
 
@@ -110,7 +118,7 @@ func main() {
 	// Prometheus Metrics Endpoint
 	app.Get("/metrics", adaptor.HTTPHandler(promhttp.Handler()))
 
-	http.NewPaymentHandler(app, paymentUseCase)
+	http.NewPaymentHandler(app, paymentUseCase, redisClient)
 	http.NewCheckoutUIHandler(app, paymentUseCase)
 
 	// 6. Graceful Shutdown Setup
